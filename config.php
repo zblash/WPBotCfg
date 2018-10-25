@@ -1,6 +1,11 @@
 <?php 
 include_once('../wp-config.php');
-
+function clearTags($tagArray,$content){
+    foreach ($tagArray as $tag) {
+       $content = preg_replace($tag, "", $content);
+    }
+    return $content;
+}
 function curl($url, $post=false)
 {
     $user_agent = 'Mozilla/5.0 (Windows; U; Windows NT 5.1; tr; rv:1.9.0.6) Gecko/2009011913 Firefox/3.0.6';
@@ -21,7 +26,7 @@ function addPost($title,$post)
     global $wpdb;
     $query = $wpdb->prepare(
         'SELECT ID FROM ' . $wpdb->posts . '
-        WHERE post_title = %s',
+        WHERE post_title = %s and post_status = "publish" ',
         $title
     );
     $wpdb->query( $query );
@@ -33,18 +38,13 @@ function addPost($title,$post)
 }
 }
 
-function addImg($image_url,$post_id )
+function addImgtoThumbnail($file,$post_id )
 {
     $upload_dir = wp_upload_dir();
-    $image_data = file_get_contents($image_url);
+    $image_data = file_get_contents($file);
     if($image_data){
-    $filename = basename($image_url);
-    if(wp_mkdir_p($upload_dir['path']))
-            $file = $upload_dir['path'] . '/' . $filename;
-    else
-            $file = $upload_dir['basedir'] . '/' . $filename;
-    file_put_contents($file, $image_data);
-    
+    $filename = basename($file);
+
     $wp_filetype = wp_check_filetype($filename, null );
     $attachment = array(
             'post_mime_type' => $wp_filetype['type'],
@@ -53,11 +53,9 @@ function addImg($image_url,$post_id )
             'post_status' => 'inherit'
     );
     $attach_id = wp_insert_attachment( $attachment, $file, $post_id );
-    require_once(ABSPATH . 'wp-admin/includes/image.php');
-    $attach_data = wp_generate_attachment_metadata( $attach_id, $file );
-    wp_update_attachment_metadata( $attach_id, $attach_data );
-    return $attach_id;
+    set_post_thumbnail( $post_id, $attach_id );
+    return true;
 }else{
-    return null;
+    return false;
 }
 }
